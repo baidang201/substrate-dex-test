@@ -45,6 +45,11 @@ sp-std = { default-features = false, version = '3.0.0' }
 sp-transaction-pool = { default-features = false, version = '3.0.0' }
 sp-version = { default-features = false, version = '3.0.0' }
 
+# ORML dependencies
+orml-currencies = {default-features = false, version = '0.4.0'}
+orml-tokens = {default-features = false, version = '0.4.0'}
+orml-traits = {default-features = false, version = '0.4.0'}
+
 # local dependencies
 pallet-template = { default-features = false, path = '../pallets/template', version = '3.0.0' }
 pallet-exchange = { default-features = false, path = '../pallets/exchange', version = '3.0.0' }
@@ -90,4 +95,7 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
+    'orml-currencies/std',
+    'orml-tokens/std',
+    'orml-traits/std',
 ]

@@ -6,11 +6,15 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+use codec::{Encode, Decode};
+#[cfg(feature = "std")]
+use serde::{Deserialize, Serialize};
 use sp_std::prelude::*;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 use sp_runtime::{
-	ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys, MultiSignature,
+	ApplyExtrinsicResult, generic, create_runtime_str, impl_opaque_keys, MultiSignature, RuntimeDebug,
 	transaction_validity::{TransactionValidity, TransactionSource},
+	traits::{Zero},
 };
 use sp_runtime::traits::{
 	BlakeTwo256, Block as BlockT, AccountIdLookup, Verify, IdentifyAccount, NumberFor,
@@ -22,6 +26,8 @@ use pallet_grandpa::fg_primitives;
 use sp_version::RuntimeVersion;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
+use orml_currencies::BasicCurrencyAdapter;
+use orml_traits::{parameter_type_with_key};
 
 // A few exports that help ease life for downstream crates.
 #[cfg(any(feature = "std", test))]
@@ -69,6 +75,17 @@ pub type Hash = sp_core::H256;
 
 /// Digest item type.
 pub type DigestItem = generic::DigestItem<Hash>;
+
+#[derive(Encode, Decode, Eq, PartialEq, Copy, Clone, RuntimeDebug, PartialOrd, Ord)]
+#[cfg_attr(feature = "std", derive(Serialize, Deserialize))]
+pub enum CurrencyId {
+	Native,
+	DOT,
+	KSM,
+	BTC,
+}
+
+pub type Amount = i128;
 
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
@@ -276,6 +293,34 @@ impl pallet_exchange::Config for Runtime {
 	type Event = Event;
 }
 
+impl orml_tokens::Config for Runtime {
+	type Event = Event;
+	type Balance = Balance;
+	type Amount = Amount;
+	type CurrencyId = CurrencyId;
+	type WeightInfo = ();
+	type ExistentialDeposits = ExistentialDeposits;
+	type OnDust = ();
+}
+
+parameter_type_with_key! {
+	pub ExistentialDeposits: |_currency_id: CurrencyId| -> Balance {
+		Zero::zero()
+	};
+}
+
+parameter_types! {
+	pub const GetNativeCurrencyId: CurrencyId = CurrencyId::Native;
+}
+
+impl orml_currencies::Config for Runtime {
+	type Event = Event;
+	type MultiCurrency = Tokens;
+	type NativeCurrency = BasicCurrencyAdapter<Runtime, Balances, Amount, BlockNumber>;
+	type GetNativeCurrencyId = GetNativeCurrencyId;
+	type WeightInfo = ();
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -294,6 +339,9 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template::{Module, Call, Storage, Event<T>},
 		ExchangeModule: pallet_exchange::{Module, Call, Storage, Event<T>},
+
+		Currencies: orml_currencies::{Module, Call, Event<T>},
+		Tokens: orml_tokens::{Module, Storage, Event<T>, Config<T>},
 	}
 );
 
