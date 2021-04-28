@@ -7,16 +7,16 @@
 pub use pallet::*;
 use codec::{Encode, Decode};
 use frame_support::{
-	decl_event, decl_module, decl_storage, decl_error,
-	Parameter,
+	decl_event, decl_module, decl_storage, decl_error, ensure,
+	Parameter, traits::BalanceStatus,
 };
 use frame_system::ensure_signed;
 use frame_support::sp_runtime::{
 	DispatchResult, RuntimeDebug,
-	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize, Bounded, One, CheckedAdd}
+	traits::{AtLeast32BitUnsigned, MaybeSerializeDeserialize, Bounded, One, CheckedAdd, Zero}
 };
 use orml_traits::{MultiCurrency, MultiCurrencyExtended, MultiReservableCurrency};
-
+use orml_utilities::with_transaction_result;
 
 #[cfg(test)]
 mod mock;
@@ -79,12 +79,15 @@ pub mod pallet {
 	pub enum Event<T: Config>
 	{
 		OrderCreated(CurrencyIdOf<T>, OrderOf<T>),
+		OrderTaken(T::AccountId, CurrencyIdOf<T>, OrderOf<T>),
 	}
 
 	// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
 		OrderIdOverflow,
+		InvalidOrderId,
+		InsufficientBalance,
 	}
 
 	#[pallet::hooks]
@@ -124,6 +127,26 @@ pub mod pallet {
 				Orders::<T>::insert(order_id, &order);
 
 				// Self::deposit_event(Event::OrderCreated(order_id, order)); //todo
+				Ok(().into())
+			})?;
+			Ok(().into())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn take_order(origin: OriginFor<T>, order_id: T::OrderId) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Orders::<T>::try_mutate_exists(order_id, |order| -> DispatchResultWithPostInfo {
+				let order = order.take().ok_or(Error::<T>::InvalidOrderId)?;
+
+				with_transaction_result(|| {
+					T::Currency::transfer(order.target_currency_id, &who, &order.owner, order.target_amount)?;
+					let val = T::Currency::repatriate_reserved(order.base_currency_id, &order.owner, &who, order.base_amount, BalanceStatus::Free)?;
+					ensure!(val.is_zero(), Error::<T>::InsufficientBalance);
+
+					// Self::deposit_event(Event::OrderTaken(who, order_id, order)); //todo
+					Ok(())
+				});
 				Ok(().into())
 			})?;
 			Ok(().into())
