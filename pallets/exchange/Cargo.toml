@@ -19,6 +19,9 @@ frame-support = { default-features = false, version = '3.0.0' }
 frame-benchmarking = { default-features = false, optional = true, version = '3.1.0' }
 sp-std = { default-features = false, version = '3.0.0' }
 
+orml-traits = { default-features = false, version = '0.4.0' }
+orml-utilities = { default-features = false, version = '0.4.0' }
+
 [dev-dependencies]
 serde = { version = "1.0.119" }
 sp-core = { default-features = false, version = '3.0.0' }
@@ -33,6 +36,9 @@ std = [
 	'frame-system/std',
 	'frame-benchmarking/std',
 	'sp-std/std',
+	'sp-runtime/std',
+	'orml-traits/std',
+	'orml-utilities/std'
 ]
 runtime-benchmarks = [
 	'frame-benchmarking',
