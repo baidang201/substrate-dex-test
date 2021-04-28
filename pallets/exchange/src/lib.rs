@@ -80,6 +80,7 @@ pub mod pallet {
 	{
 		OrderCreated(CurrencyIdOf<T>, OrderOf<T>),
 		OrderTaken(T::AccountId, CurrencyIdOf<T>, OrderOf<T>),
+		OrderCancelled(CurrencyIdOf<T>),
 	}
 
 	// Errors inform users that something went wrong.
@@ -88,6 +89,7 @@ pub mod pallet {
 		OrderIdOverflow,
 		InvalidOrderId,
 		InsufficientBalance,
+		NotOwner,
 	}
 
 	#[pallet::hooks]
@@ -147,6 +149,22 @@ pub mod pallet {
 					// Self::deposit_event(Event::OrderTaken(who, order_id, order)); //todo
 					Ok(())
 				});
+				Ok(().into())
+			})?;
+			Ok(().into())
+		}
+
+		#[pallet::weight(10_000)]
+		pub fn cancel_order(origin: OriginFor<T>, order_id: T::OrderId) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin)?;
+
+			Orders::<T>::try_mutate_exists(order_id, |order| -> DispatchResultWithPostInfo {
+				let order = order.take().ok_or(Error::<T>::InvalidOrderId)?;
+
+				ensure!(order.owner == who, Error::<T>::NotOwner);
+
+				//Self::deposit_event(Event::OrderCancelled(order_id));
+
 				Ok(().into())
 			})?;
 			Ok(().into())
