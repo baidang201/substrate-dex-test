@@ -5,21 +5,19 @@ use frame_support::{assert_noop, assert_ok};
 
 const ENDOWED_AMOUNT: u128 = 1_000_000_000_000_000;
 
-#[derive(Encode, Decode, Clone, RuntimeDebug, Eq, PartialEq)]
-pub struct Order<CurrencyId, Balance, AccountId> {
-    pub base_currency_id: CurrencyId,
-    #[codec(compact)]
-    pub base_amount: Balance,
-    pub target_currency_id: CurrencyId,
-    #[codec(compact)]
-    pub target_amount: Balance,
-    pub owner: AccountId,
-}
-
 fn new_test_ext() -> sp_io::TestExternalities {
     let mut ext = ExtBuilder::default().build();
     ext.execute_with(|| System::set_block_number(1));
     ext
+}
+
+fn events() -> Vec<Event> {
+	let evt = System::events()
+		.into_iter()
+		.map(|evt| evt.event)
+		.collect::<Vec<_>>();
+	System::reset_events();
+	evt
 }
 
 #[test]
@@ -36,6 +34,13 @@ fn test_submit_order() {
 
         assert_eq!(Tokens::free_balance(DOT, &ALICE), ENDOWED_AMOUNT - 10);
         assert_eq!(Tokens::free_balance(BTC, &ALICE), ENDOWED_AMOUNT);
+
+				assert_eq!(
+					events().as_slice(),
+					[
+						Event::pallet_exchange(crate::Event::OrderCreated(0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE })),
+					]
+				);
     });
 }
 
@@ -64,6 +69,15 @@ fn test_take_order() {
         assert_eq!(Tokens::free_balance(BTC, &ALICE), ENDOWED_AMOUNT + 1);
         assert_eq!(Tokens::free_balance(DOT, &BOB), ENDOWED_AMOUNT + 10);
         assert_eq!(Tokens::free_balance(BTC, &BOB), ENDOWED_AMOUNT - 1);
+
+				assert_eq!(
+					events().as_slice(),
+					[
+						Event::pallet_exchange(crate::Event::OrderCreated(0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE })),
+						//Event::orml_currencies(crate::Event::Transferred(BTC, ALICE, DOT, 1)),
+						Event::pallet_exchange(crate::Event::OrderTaken(BOB, 0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE }))
+					]
+				);
     });
 }
 
@@ -92,5 +106,13 @@ fn test_cancel_order() {
 
         //id exist, is owner
         assert_ok!(ExchangeModule::cancel_order(Origin::signed(ALICE), 0));
+
+				assert_eq!(
+					events().as_slice(),
+					[
+						Event::pallet_exchange(crate::Event::OrderCreated(0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE })),
+						Event::pallet_exchange(crate::Event::OrderCancelled(0))
+					]
+				);
     });
 }
