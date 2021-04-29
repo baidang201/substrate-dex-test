@@ -1,5 +1,5 @@
 use super::*;
-pub use crate::mock::{Event, ExchangeModule, ExtBuilder, Origin, System, Tokens, ALICE, BOB};
+pub use crate::mock::{Event, ExchangeModule, Currencies, ExtBuilder, Origin, System, Tokens, ALICE, BOB};
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 
@@ -74,7 +74,7 @@ fn test_take_order() {
 					events().as_slice(),
 					[
 						Event::pallet_exchange(crate::Event::OrderCreated(0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE })),
-						//Event::orml_currencies(crate::Event::Transferred(BTC, ALICE, DOT, 1)),
+						Event::orml_currencies(orml_currencies::Event::Transferred(BTC, BOB, ALICE, 1)),
 						Event::pallet_exchange(crate::Event::OrderTaken(BOB, 0, Order { base_currency_id: DOT, base_amount: 10, target_currency_id: BTC, target_amount: 1, owner: ALICE }))
 					]
 				);
