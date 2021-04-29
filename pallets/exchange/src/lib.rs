@@ -74,13 +74,13 @@ pub mod pallet {
 	// Pallets use events to inform users when important changes are made.
 	// https://substrate.dev/docs/en/knowledgebase/runtime/events
 	#[pallet::event]
-	#[pallet::metadata(T::AccountId = "AccountId", CurrencyIdOf<T> = "OrderId", OrderOf<T> = "Order", BalanceOf<T> = "Balance")]
+	#[pallet::metadata(T::AccountId = "AccountId", T::OrderId = "OrderId", OrderOf<T> = "Order", BalanceOf<T> = "Balance")]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config>
 	{
-		OrderCreated(CurrencyIdOf<T>, OrderOf<T>),
-		OrderTaken(T::AccountId, CurrencyIdOf<T>, OrderOf<T>),
-		OrderCancelled(CurrencyIdOf<T>),
+		OrderCreated(T::OrderId, OrderOf<T>),
+		OrderTaken(T::AccountId, T::OrderId, OrderOf<T>),
+		OrderCancelled(T::OrderId),
 	}
 
 	// Errors inform users that something went wrong.
@@ -128,7 +128,7 @@ pub mod pallet {
 
 				Orders::<T>::insert(order_id, &order);
 
-				// Self::deposit_event(Event::OrderCreated(order_id, order)); //todo
+				Self::deposit_event(Event::OrderCreated(order_id, order));
 				Ok(().into())
 			})?;
 			Ok(().into())
@@ -146,7 +146,7 @@ pub mod pallet {
 					let val = T::Currency::repatriate_reserved(order.base_currency_id, &order.owner, &who, order.base_amount, BalanceStatus::Free)?;
 					ensure!(val.is_zero(), Error::<T>::InsufficientBalance);
 
-					// Self::deposit_event(Event::OrderTaken(who, order_id, order)); //todo
+					Self::deposit_event(Event::OrderTaken(who, order_id, order));
 					Ok(())
 				});
 				Ok(().into())
@@ -163,8 +163,7 @@ pub mod pallet {
 
 				ensure!(order.owner == who, Error::<T>::NotOwner);
 
-				//Self::deposit_event(Event::OrderCancelled(order_id));
-
+				Self::deposit_event(Event::OrderCancelled(order_id));
 				Ok(().into())
 			})?;
 			Ok(().into())
